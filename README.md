@@ -2,7 +2,7 @@
 
 See which statements of a Stele catalog your change touches, in a [Rex](https://www.superlogical.com/rex) pane with one key. A sibling of RexySesh, RexyTask and RexyCamp.
 
-Focus a pane in a repository that has a catalog and press <kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>E</kbd> to open the view in a floating pane. Press it again to close it.
+Focus a pane in a Git worktree and press <kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>E</kbd> to open the view in a floating pane. Press it again to close it.
 
 The view only reads. It runs `stele intent impact` for the directory of the focused pane, and runs it again when the branch moves or a tracked file changes.
 
@@ -11,6 +11,17 @@ The view only reads. It runs `stele intent impact` for the directory of the focu
 - **Header**: the branch, what it is compared with, how many statements the change touches, how much changed code no statement maps, and how many statements await approval.
 - **Touched**: the touched statements, grouped by the catalog file they live in. `✗` marks a statement whose mapped code was removed, `●` one whose mapped code changed. Below them, the changed code that no statement maps.
 - **Statement**: the selected statement's text, the statement it refines, the sources its comment cites, every piece of code it maps to, and the diff of just the lines that were touched. For unmapped code it shows the file's diff.
+
+## Checking a worktree plan
+
+Press <kbd>p</kbd> to see the plans in the focused worktree’s `plans/` directory.
+A single `.stele` plan opens directly. If several are present, use the arrow
+keys to choose one and press Enter. The view shows the plan source and the
+output of `stele plan check` for that file. This works in worktrees without
+an intent catalog.
+
+Press <kbd>r</kbd> after editing to read the file and check it again.
+Press <kbd>p</kbd> to return to catalog impact.
 
 ## What a change is compared with
 

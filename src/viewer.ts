@@ -1,11 +1,12 @@
 // The viewer as a terminal app: it asks Stele what the change in a directory touches, and asks
 // again when the branch or a tracked file changes.
-import { runCommand, runQuietly } from "./command.ts"
+import { outputOf, runCommand, runQuietly } from "./command.ts"
 import { parseAnchor, parseHunks, parseLocation, type DiffHunk } from "./diff.ts"
 import { editorCommandFor } from "./editor.ts"
 import { availableBaseChoices, isFailure, readImpact, type BaseChoice, type Impact } from "./impact.ts"
 import { readChangeFingerprint, readRepositoryState, type RepositoryState } from "./repository.ts"
 import { buildRows, renderScreen, type SelectableRow } from "./view.ts"
+import { checkPlan, listPlans, renderPlans, type PlanList, type PlanScreen } from "./plans.ts"
 
 export type ViewerOptions = {
   workingDirectory: string
@@ -35,6 +36,7 @@ let statusMessage = ""
 let baseChoice: BaseChoice = "mergeBase"
 let changeFingerprint: string | undefined
 let loadGeneration = 0
+let plans: PlanScreen | null = null
 const hunksByFile = new Map<string, DiffHunk[]>()
 const filesBeingRead = new Set<string>()
 
@@ -51,6 +53,11 @@ function selectedRow(): SelectableRow | undefined {
 }
 
 function render() {
+  if (plans) {
+    const lines = renderPlans(plans, process.stdout.columns, process.stdout.rows)
+    process.stdout.write(`\x1b[?2026h\x1b[H\x1b[2J${lines.join("\r\n")}\x1b[?2026l`)
+    return
+  }
   const screen = renderScreen(
     {
       repository,
@@ -217,7 +224,63 @@ function quit() {
   process.exit(0)
 }
 
+async function showPlan(list: PlanList) {
+  const detail: PlanScreen = { kind: "detail", list, lines: ["Checking plan…"], offset: 0 }
+  plans = detail
+  render()
+  try {
+    detail.lines = await checkPlan(list.directory, list.paths[list.index]!, options.steleBinary)
+  } catch (error) {
+    detail.lines = [String(error)]
+  }
+  if (plans === detail) render()
+}
+
+async function showPlans() {
+  const loading: PlanScreen = { kind: "message", message: "Reading worktree plans…" }
+  plans = loading
+  render()
+  try {
+    const root = await outputOf([options.gitBinary, "rev-parse", "--show-toplevel"], options.workingDirectory)
+    const directory = root?.trimEnd()
+    const paths = directory ? await listPlans(directory) : []
+    if (plans !== loading) return
+    if (directory && paths.length) {
+      plans = { kind: "list", directory, paths, index: 0 }
+      if (paths.length === 1) return showPlan(plans)
+    } else {
+      loading.message = directory ? "No plans/*.stele files in this worktree." : "Open a Git worktree to see its plans."
+    }
+  } catch (error) {
+    loading.message = String(error)
+  }
+  render()
+}
+
+function handlePlanKey(screen: PlanScreen, key: string) {
+  if (key === "q" || key === "\x03") return quit()
+  if (key === "p" || key === "\x1b") {
+    plans = key === "\x1b" && screen.kind === "detail" && screen.list.paths.length > 1 ? screen.list : null
+    return
+  }
+  if (key === "r") return screen.kind === "detail" ? void showPlan(screen.list) : void showPlans()
+  if (key === "\r" && screen.kind === "list") return void showPlan(screen)
+  if (screen.kind === "detail" && ["J", " ", "\x1b[6~", "K", "\x1b[5~"].includes(key)) {
+    const direction = ["K", "\x1b[5~"].includes(key) ? -1 : 1
+    screen.offset = Math.max(0, screen.offset + direction * DETAIL_SCROLL_STEP)
+    return
+  }
+  const down = ["j", "\x1b[B", "\x1bOB"].includes(key)
+  const up = ["k", "\x1b[A", "\x1bOA"].includes(key)
+  if (!down && !up) return
+  const step = down ? 1 : -1
+  if (screen.kind === "list") screen.index = (screen.index + step + screen.paths.length) % screen.paths.length
+  if (screen.kind === "detail") screen.offset = Math.max(0, screen.offset + step)
+}
+
 function handleKey(key: string) {
+  if (plans) return handlePlanKey(plans, key)
+  if (key === "p") return void showPlans()
   switch (key) {
     case "q":
     case "\x1b":

@@ -40,6 +40,7 @@ export type RenderedScreen = {
 const KEY_HINTS: [key: string, action: string][] = [
   ["↑↓", "select"],
   ["J K", "scroll"],
+  ["p", "plans"],
   ["b", "base"],
   ["r", "refresh"],
   ["enter", "open code"],
@@ -285,7 +286,7 @@ export function scrollOffsetFor(anchorLineIndex: number, lineCount: number, visi
   return Math.min(lastOffset, Math.max(0, anchorLineIndex - Math.floor(visibleCount / 2)))
 }
 
-function frame(
+export function frame(
   title: string,
   footer: string,
   contentLines: string[],
