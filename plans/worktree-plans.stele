@@ -1,0 +1,18 @@
+plan worktree_plans {
+  intent inspect_worktree_plan {
+    text: "From a Rex pane the developer can read a typed plan and see Stele's check result for the focused worktree."
+  }
+  decision select_locally {
+    governs: [inspect_worktree_plan]
+    text: "Open the sole plan directly. When multiple plans exist, let the developer select one. Run the check in that worktree independently of catalog impact."
+    rejected: "A repository-wide latest plan can describe work on another branch."
+  }
+  change view_plans {
+    serves: [inspect_worktree_plan]
+    follows: [select_locally]
+    state: done
+    creates: ["src/plans.ts"]
+    touches: ["src/viewer.ts"]
+    text: "Offer worktree plan selection, reading and checking from the impact viewer."
+  }
+}

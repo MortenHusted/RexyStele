@@ -41,7 +41,7 @@ export function wrapToWidth(text: string, width: number): string[] {
 
 // Prompts and titles come from a transcript and may hold line breaks or escape codes.
 export function singleLine(text: string): string {
-  return text.replace(/[\u0000-\u001f\u007f]+/g, " ").trim()
+  return text.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ").trim()
 }
 
 // An OSC 8 hyperlink: the terminal opens the address when the text is clicked.
